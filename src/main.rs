@@ -34,8 +34,7 @@ impl Args<'_> {
       None => return Err("Missing file path"),
     };
 
-    let ignore_case = env::var("IGNORE_CASE").is_ok();
-
+    let ignore_case = get_ignore_case(args);
     Ok(Args {
       query,
       file_path,
@@ -58,4 +57,23 @@ fn run(args: Args) -> Result<(), Box<dyn Error>> {
   }
 
   Ok(())
+}
+
+fn get_ignore_case(args: &Vec<String>) -> bool {
+	const IGNORE_FLAG: &str = "-i";
+
+  if let Some(x) = args.get(3) {
+    return x.eq(IGNORE_FLAG);
+  };
+
+  let Ok(env_var) = env::var("IGNORE_CASE") else {
+    return false;
+  };
+
+  let value: i32 = match env_var.parse() {
+    Ok(v) => v,
+    Err(_) => 0,
+  };
+
+	value > 0
 }
