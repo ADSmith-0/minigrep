@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::{env, fs, process};
 
-use minigrep::search;
+use minigrep::{search, search_case_insensitive};
 
 fn main() {
   let args: Vec<String> = env::args().collect();
@@ -20,6 +20,7 @@ fn main() {
 struct Args<'a> {
   query: &'a str,
   file_path: &'a str,
+  ignore_case: bool,
 }
 
 impl Args<'_> {
@@ -33,14 +34,26 @@ impl Args<'_> {
       None => return Err("Missing file path"),
     };
 
-    Ok(Args { query, file_path })
+    let ignore_case = env::var("IGNORE_CASE").is_ok();
+
+    Ok(Args {
+      query,
+      file_path,
+      ignore_case,
+    })
   }
 }
 
 fn run(args: Args) -> Result<(), Box<dyn Error>> {
   let contents = fs::read_to_string(args.file_path)?;
 
-  for line in search(&args.query, &contents) {
+  let results = if args.ignore_case {
+    search_case_insensitive(&args.query, &contents)
+  } else {
+    search(&args.query, &contents)
+  };
+
+  for line in results {
     println!("{line}");
   }
 
