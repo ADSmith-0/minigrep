@@ -25,13 +25,11 @@ struct Args<'a> {
 
 impl Args<'_> {
   fn new<'a>(args: &'a Vec<String>) -> Result<Args<'a>, &'static str> {
-    let query = match args.get(1) {
-      Some(a) => a,
-      None => return Err("Missing search query"),
+    let Some(query) = args.get(1) else {
+      return Err("Missing search query");
     };
-    let file_path = match args.get(2) {
-      Some(a) => a,
-      None => return Err("Missing file path"),
+    let Some(file_path) = args.get(2) else {
+      return Err("Missing file path");
     };
 
     let ignore_case = get_ignore_case(args);
@@ -60,7 +58,7 @@ fn run(args: Args) -> Result<(), Box<dyn Error>> {
 }
 
 fn get_ignore_case(args: &Vec<String>) -> bool {
-	const IGNORE_FLAG: &str = "-i";
+  const IGNORE_FLAG: &str = "-i";
 
   if let Some(x) = args.get(3) {
     return x.eq(IGNORE_FLAG);
@@ -75,5 +73,5 @@ fn get_ignore_case(args: &Vec<String>) -> bool {
     Err(_) => 0,
   };
 
-	value > 0
+  value > 0
 }
