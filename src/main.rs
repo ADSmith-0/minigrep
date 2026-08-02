@@ -1,12 +1,10 @@
 use std::error::Error;
 use std::{env, fs, process};
 
-use minigrep::{search, search_case_insensitive};
+use minigrep::{Case, search};
 
 fn main() {
-  let args: Vec<String> = env::args().collect();
-
-  let args = Args::new(&args).unwrap_or_else(|err| {
+  let args = Args::new(env::args()).unwrap_or_else(|err| {
     eprintln!("Problem parsing your arguments: {err}");
     process::exit(1);
   });
@@ -17,26 +15,30 @@ fn main() {
   };
 }
 
-struct Args<'a> {
-  query: &'a str,
-  file_path: &'a str,
-  ignore_case: bool,
+struct Args {
+  query: String,
+  file_path: String,
+  case: Case,
 }
 
-impl Args<'_> {
-  fn new<'a>(args: &'a Vec<String>) -> Result<Args<'a>, &'static str> {
-    let Some(query) = args.get(1) else {
+impl Args {
+  fn new(mut args: impl Iterator<Item = String>) -> Result<Args, &'static str> {
+    args.next();
+
+    let Some(query) = args.next() else {
       return Err("Missing search query");
     };
-    let Some(file_path) = args.get(2) else {
+
+    let Some(file_path) = args.next() else {
       return Err("Missing file path");
     };
 
-    let ignore_case = get_ignore_case(args);
+    let ignore_case = get_ignore_case(args.next());
+
     Ok(Args {
       query,
       file_path,
-      ignore_case,
+      case: ignore_case,
     })
   }
 }
@@ -44,11 +46,7 @@ impl Args<'_> {
 fn run(args: Args) -> Result<(), Box<dyn Error>> {
   let contents = fs::read_to_string(args.file_path)?;
 
-  let results = if args.ignore_case {
-    search_case_insensitive(&args.query, &contents)
-  } else {
-    search(&args.query, &contents)
-  };
+  let results = search(&args.query, &contents, &args.case);
 
   for line in results {
     println!("{line}");
@@ -57,21 +55,24 @@ fn run(args: Args) -> Result<(), Box<dyn Error>> {
   Ok(())
 }
 
-fn get_ignore_case(args: &Vec<String>) -> bool {
+fn get_ignore_case(arg: Option<String>) -> Case {
   const IGNORE_FLAG: &str = "-i";
 
-  if let Some(x) = args.get(3) {
-    return x.eq(IGNORE_FLAG);
+  if let Some(x) = arg {
+    if x.eq(IGNORE_FLAG) {
+      return Case::Insensitive;
+    };
+    return Case::Sensitive;
   };
 
   let Ok(env_var) = env::var("IGNORE_CASE") else {
-    return false;
+    return Case::Sensitive;
   };
 
-  let value: i32 = match env_var.parse() {
-    Ok(v) => v,
-    Err(_) => 0,
-  };
+  let value: i32 = env_var.parse().unwrap_or(0);
 
-  value > 0
+  if value > 0 {
+    return Case::Insensitive;
+  }
+  return Case::Sensitive;
 }
